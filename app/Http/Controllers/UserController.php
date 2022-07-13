@@ -51,6 +51,7 @@ class UserController extends Controller
             'password' =>  'required',
             'first_name' =>  'required',
             'last_name' =>  'required',
+            'field_id' =>  'required',
             'type' =>  'required',
         ]);
         $user = User::where('email', $request->email)->first();
@@ -67,19 +68,14 @@ class UserController extends Controller
             'field_id' => $request->field_id,
             'type' => $request->type,
             'approved' => $request->type == 'normal' ? 'yes' : 'waiting',
-            'fcm_token' => $request->fcm_token
         ]);
-        // $adminUser = User::where('type', 'admin')->first();
-        // FCMService::send($adminUser->fcm_token, [
-        //     'title' => 'New User Account',
-        //     'body' => 'New User Account has been requested with name : ' . $user->first_name,
-        // ], [
-        //     'message' => ''
-        // ]);
+        $token =  $user->createToken('authToken')->plainTextToken;
         if (isset($user)) {
             return response()->json([
                 'code' => 200,
                 'message' => "user created successfully" . ($user->approved != 'yes' ? ' and waiting admin approvel' : ''),
+                'type'=>$request->type,
+                'token'=>$token
             ], 200);
         } else {
             return response()->json([

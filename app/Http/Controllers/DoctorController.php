@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ApprovedArtical;
 use App\Models\Artical;
 use App\Models\Field;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,35 +14,24 @@ class DoctorController extends Controller
     public function addArtical(Request $request)
     {
 
-        // request [ name , field_id , type{artical,research} , university_name  , file(PDF) ]
+        // request [ name  , type{artical,research} , university_name  , file(PDF) ]
         $user = Auth::user();
         if ($user->type === 'doctor') {
-            if ($request->field_id == $user->field_id)
-                $artical = Artical::create([
-                    'name' => $request->name,
-                    'field_id' => $request->field_id,
-                    'type' => $request->type,
-                    'university_name' => $request->university_name,
-                    'file_url' => '',
-                    'writer_id' => $user->id,
-                ]);
-            else {
-                return response()->json([
-                    'code' => 300,
-                    'message' => "you can't add artical in another field.",
-                    'fields' => [
-                        Field::where('id', $user->field_id)->first(),
-                        Field::where('id', $request->field_id)->first(),
-                    ]
-                ], 200);
-            }
+            $artical = Artical::create([
+                'name' => $request->name,
+                'field_id' => $user->field_id,
+                'type' => $request->type,
+                'university_name' => $request->university_name,
+                'file_url' => '',
+                'writer_id' => $user->id,
+            ]);
             if ($request->hasFile('pdf')) {
-                $pdf = $request->pdf;
+                $pdf = $request->file('pdf');
                 $file_ext = $pdf->getClientOriginalExtension();
                 $file_name = time() . '.' . $file_ext; // 4654654654654.pdf
-                $path = 'pdf';
-                $pdf->move($path, $file_name); // /pdf/4654654654654.pdf
-                $artical->file_url = $path . '/' . $file_name;
+                $path = '/public/pdf';
+                $pdf->storeAs($path, $file_name); // /pdf/4654654654654.pdf
+                $artical->file_url =  '/storage/pdf/' . $file_name;
                 $artical->save();
             }
             ApprovedArtical::create([
@@ -93,7 +83,7 @@ class DoctorController extends Controller
     public function approveArtical(Request $request)
     { // request [ artical_id  ]
         $user = Auth::user();
-        if ($user->type === 'doctor') {
+        if ($user->type == 'doctor') {
             $artical = Artical::where('id', $request->artical_id)->first();
             // check doctor_id 
             if (isset($artical)) {
@@ -105,7 +95,7 @@ class DoctorController extends Controller
                     return response()->json([
                         'code' => 200,
                         'message' => "This artical has been approved",
-                        'artical' => $approvedArtical
+                        'data' => $approvedArtical
                     ], 200);
                 } else {
                     return response()->json([
@@ -122,7 +112,7 @@ class DoctorController extends Controller
         } else {
             return response()->json([
                 'code' => 300,
-                'message' => "The provided ID of artical is not yours."
+                'message' => "you dont have access to this route cuz ur not a doctor."
             ], 200);
         }
     }
@@ -165,22 +155,43 @@ class DoctorController extends Controller
     {
         $user = Auth::user();
         if ($user->type === 'doctor') {
-            $requests = Artical::where('doctor_id', $user->id)->get();
+            $requests = Artical::where('doctor_id', $user->id)->with('writer')->get();
             $approvedRequests = ApprovedArtical::whereHas(
                 'artical',
-                fn ($query) => $query->where('doctor_id', $user->id)
+                fn ($artical) => $artical->where('doctor_id', $user->id)
             )->get();
-            $deletedArtical = [];
+
             foreach ($approvedRequests as $artical) {
-                $removeableArtical = $requests->where('id', $artical->id)->first();
+                $removeableArtical = $requests->where('id', $artical->artical_id)->first();
                 if (isset($removeableArtical)) {
-                    array_push($deletedArtical, $removeableArtical);
-                    $removeableArtical->delete();
+                    $requests = $requests->except($artical->artical_id);
+                    // info($requests);
                 } else {
-                    error_log('artical not found with ID : #' . $artical->id);
+                    info('artical not found with ID : #' . $artical->id);
                 }
             }
             return response()->json($requests, 200);
+        } else {
+            return response()->json([
+                'code' => 403,
+                'message' => "you don't have access to this route."
+            ], 200);
+        }
+    }
+
+    public function myArticles()
+    {
+        $user = Auth::user();
+        if ($user->type === 'doctor') {
+            $articles = Artical::where('writer_id', $user->id)
+                ->with(
+                    'writer',
+                    'field',
+                    'approved',
+                    'bannd',
+                    'comments.user',
+                )->paginate(10);
+            return response()->json($articles, 200);
         } else {
             return response()->json([
                 'code' => 403,

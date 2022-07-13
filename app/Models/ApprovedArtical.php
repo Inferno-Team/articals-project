@@ -12,6 +12,14 @@ class ApprovedArtical extends Model
         'approver_id',
         'artical_id'
     ];
+    public function format(){
+        return [
+            'id'=>$this->id,
+            'artical_id'=>$this->artical_id,
+            'created_at'=>$this->created_at->diffForHumans(),
+            'artical'=>$this->artical->format(),
+        ];
+    }
     public function approver()
     {
         return $this->hasOne(User::class, 'approver_id');

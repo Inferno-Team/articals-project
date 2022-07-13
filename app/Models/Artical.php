@@ -17,12 +17,29 @@ class Artical extends Model
         'writer_id',
         'file_url'
     ];
+    public function format(){
+        return [
+            'id'=>$this->id,
+            'name'=>$this->name,
+            'type'=>$this->type,
+            'university_name'=>$this->university_name,
+            'file_url'=>$this->file_url,
+            'created_at'=>$this->created_at->diffForHumans(),
+            'download_number'=>$this->download_number,
+            'writer'=>$this->writer,
+            'doctor'=>$this->doctor,
+            'field'=>$this->field,
+            'banned'=>$this->banned,
+            'approved'=>$this->approved,
+            'comments'=>$this->comments->map->format(),
+        ];
+    }
     public function approved()
     {
-        return $this->hasOne(ApprovedArtical::class, 'artical_id', 'id');
+        return $this->hasOne(ApprovedArtical::class, 'artical_id');
     }public function bannd()
     {
-        return $this->hasOne(BannedArtical::class, 'artical_id', 'id');
+        return $this->hasOne(BannedArtical::class, 'artical_id');
     }
     public function writer()
     {
@@ -35,5 +52,8 @@ class Artical extends Model
     public function field()
     {
         return $this->belongsTo(Field::class, 'field_id');
+    }
+    public function comments(){
+        return $this->hasMany(Comment::class);
     }
 }

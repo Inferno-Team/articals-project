@@ -5,13 +5,17 @@ use App\Http\Controllers\CommonController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\MasterController;
 use App\Http\Controllers\UserController;
+use App\Models\Artical;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
+use PharIo\Manifest\Author;
 
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/signup', [UserController::class, 'signUp']);
 Route::post('/reset', [UserController::class, 'reset']);
+Route::get('/get_fields', [CommonController::class, 'getFields']);
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -37,6 +41,7 @@ Route::group(['middleware' => ['auth:sanctum']], function ($route) {
     $route->post('/doctor/remove_approved_artical', [DoctorController::class, 'removeApproveArtical']);
     // doctor [ get ] routes
     $route->get('/doctor/get_all_master_requests', [DoctorController::class, 'getMasterRequests']);
+    $route->get('/doctor/get_my_articles', [DoctorController::class, 'myArticles']);
 });
 
 // Master Routes
@@ -51,10 +56,11 @@ Route::group(['middleware' => ['auth:sanctum']], function ($route) {
 // normal student routes [ common routes ]
 Route::group(['middleware' => ['auth:sanctum']], function ($route) {
     // doctor [ post ] routes
+    $route->post('/common/comment', [CommonController::class, 'commentOnArticle']);
     $route->post('/common/make_report', [CommonController::class, 'makeReport']);
     $route->post('/common/search', [CommonController::class, 'search']);
-    $route->get('/common/get_fields',[CommonController::class,'getFields']);
-    $route->get('/common/get_field_artical/{field}',[CommonController::class,'getArticals']);
-    $route->get('/common/get_recent_articales',[CommonController::class,'recentArticles']);
-    $route->get('/common/download_article_file/{id}',[CommonController::class,'downloadFile']);
+    $route->get('/common/get_field_artical/{field}', [CommonController::class, 'getArticals']);
+    $route->get('/common/get_recent_articales', [CommonController::class, 'recentArticles']);
+    $route->get('/common/download_article_file/{id}', [CommonController::class, 'downloadFile']);
+    $route->get('/common/get_article_details/{id}', [CommonController::class, 'getArticleDetails']);
 });

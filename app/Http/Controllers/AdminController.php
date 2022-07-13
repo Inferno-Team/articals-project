@@ -138,13 +138,11 @@ class AdminController extends Controller
     {
         $user = Auth::user();
         if ($user->type === 'admin') {
-            return response()->json([
-                'code' => 200,
-                'requests' => User::where('type', 'doctor')
-                    ->where('type', 'master')
-                    ->orWhere('approved', 'waiting')
-                    ->get()
-            ], 200);
+            return response()->json(User::where('type', 'doctor')
+            ->where('type', 'master')
+            ->orWhere('approved', 'waiting')
+            ->with('field')
+            ->get()->map->format(), 200);
         } else {
             return response()->json([
                 'code' => 403,

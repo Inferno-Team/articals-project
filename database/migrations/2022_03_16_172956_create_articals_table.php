@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('type', ['artical', 'research']);
             $table->string('university_name');
             $table->foreignId('writer_id')->references('id')->on('users');
-            $table->string('file_url')->nullable()->unique();
+            $table->string('file_url')->nullable();
           
             $table->timestamps();
         });

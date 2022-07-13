@@ -17,6 +17,7 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
+
     protected $fillable = [
         'first_name',
         'last_name',
@@ -26,6 +27,19 @@ class User extends Authenticatable
         'email',
         'password',
     ];
+    public function format()
+    {
+        return [
+            'id' => $this->id,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'field' => $this->field,
+            'type' => $this->type,
+            'approved' => $this->approved,
+            'email' => $this->email,
+            'created_at' => $this->created_at->diffForHumans(),
+        ];
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -45,4 +59,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function field()
+    {
+        return $this->belongsTo(Field::class, 'field_id');
+    }
 }

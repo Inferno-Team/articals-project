@@ -14,61 +14,53 @@ class MasterController extends Controller
     public function addArtical(Request $request)
     {
 
-        // request [ name , field_id , type{artical,research} , university_name  , file(PDF) , doctor_id ]
+        // request [ name  , type{artical,research} , university_name  , file(PDF) , doctor_id ]
         $user = Auth::user();
         if ($user->type === 'master') {
             $doctor = User::where('id', $request->doctor_id)->first();
-            if ($request->field_id == $user->field_id) {
 
-                if (!isset($doctor)) {
-                    return response()->json([
-                        'code' => 300,
-                        'message' => "the provided doctor ID is not vaild ID.",
-                    ], 200);
-                }
-                if ($doctor->type != 'doctor')
-                    return response()->json([
-                        'code' => 300,
-                        'message' => "the provided ID is not a doctor ID.",
-                    ], 200);
-                if ($doctor->field_id != $request->field_id) {
-                    return response()->json([
-                        'code' => 301,
-                        'message' => "you can't choose doctor outside your field.",
-                    ], 200);
-                }
-                $artical = Artical::create([
-                    'name' => $request->name,
-                    'field_id' => $request->field_id,
-                    'type' => $request->type,
-                    'university_name' => $request->university_name,
-                    'file_url' => '',
-                    'writer_id' => $user->id,
-                    'doctor_id' => $request->doctor_id
-                ]);
-            } else {
+            if (!isset($doctor)) {
                 return response()->json([
-                    'code' => 302,
-                    'message' => "you can't add artical in another field.",
-                    'fields' => [
-                        Field::where('id', $user->field_id)->first(),
-                        Field::where('id', $request->field_id)->first(),
-                    ]
+                    'code' => 300,
+                    'message' => "the provided doctor ID is not vaild ID.",
                 ], 200);
             }
+            if ($doctor->type != 'doctor')
+                return response()->json([
+                    'code' => 300,
+                    'message' => "the provided ID is not a doctor ID.",
+                ], 200);
+            if ($doctor->field_id != $user->field_id) {
+                return response()->json([
+                    'code' => 301,
+                    'message' => "you can't choose doctor outside your field.",
+                ], 200);
+            }
+
+            $artical = Artical::create([
+                'name' => $request->name,
+                'field_id' => $user->field_id,
+                'type' => $request->type,
+                'university_name' => $request->university_name,
+                'file_url' => '',
+                'writer_id' => $user->id,
+                'doctor_id' => $request->doctor_id
+            ]);
+
             if ($request->hasFile('pdf')) {
-                $pdf = $request->pdf;
+                $pdf = $request->file('pdf');
                 $file_ext = $pdf->getClientOriginalExtension();
                 $file_name = time() . '.' . $file_ext;
-                $path = 'pdf';
-                $pdf->move($path, $file_name);
-                $artical->file_url = $path . '/' . $file_name;
+                $path = '/public/pdf';
+                $pdf->storeAs($path, $file_name);
+                $artical->file_url = '/storage/pdf/' . $file_name;
                 $artical->save();
             }
             return response()->json([
                 'code' => 200,
-                'message' => 'artical added and waiting to be approved by doctor [ ' . $doctor->first_name . ' ].',
-                'artical' => $artical
+                'message' => 'artical added and waiting to be approved by doctor [ '
+                    . $doctor->first_name . $doctor->last_name  . ' ].',
+                'data' => $artical
             ], 200);
         } else {
             return response()->json([
@@ -127,6 +119,13 @@ class MasterController extends Controller
     {
         $user = Auth::user();
         if ($user->type === 'master') {
+            if ($user->approved != 'yes') {
+                return response()->json([
+                    'code' => 300,
+                    'msg' => "your account not approved yet please wait until been approved.",
+                    'articles' => null
+                ], 200);
+            }
             $articles = Artical::where('writer_id', $user->id)
                 ->with(
                     'writer',
@@ -134,12 +133,17 @@ class MasterController extends Controller
                     'field',
                     'approved',
                     'bannd',
-                )->paginate(15);
-            return response()->json($articles, 200);
+                    'comments.user'
+                )->get()->map->format();
+            return response()->json([
+                'code' => 200,
+                'msg' => "good",
+                'articles' => $articles
+            ], 200);
         } else {
             return response()->json([
                 'code' => 403,
-                'message' => "you don't have access to this route."
+                'msg' => "you don't have access to this route."
             ], 200);
         }
     }
@@ -147,8 +151,8 @@ class MasterController extends Controller
     {
         $user = Auth::user();
         if ($user->type === 'master') {
-            $doctors = User::where('type','doctor')
-            ->where('field_id',$user->field_id)->get();
+            $doctors = User::where('type', 'doctor')
+                ->where('field_id', $user->field_id)->get();
             return response()->json($doctors);
         } else {
             return response()->json([
